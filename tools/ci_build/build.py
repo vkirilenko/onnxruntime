@@ -266,10 +266,6 @@ def parse_arguments():
         "--target",
         help="Build a specific target, e.g. winml_dll")
     parser.add_argument(
-        "--x86", action='store_true',
-        help="Create x86 makefiles. Requires --update and no existing cache "
-        "CMake setup. Delete CMakeCache.txt if needed")
-    parser.add_argument(
         "--arm", action='store_true',
         help="Create ARM makefiles. Requires --update and no existing cache "
         "CMake setup. Delete CMakeCache.txt if needed")
@@ -1984,19 +1980,16 @@ def main():
         if not args.skip_submodule_sync:
             update_submodules(source_dir)
         if is_windows():
+            cpu_arch = platform.architecture()[0]
             if args.build_wasm:
                 cmake_extra_args = ['-G', 'Ninja']
             elif args.cmake_generator == 'Ninja':
-                if args.x86 or args.arm or args.arm64 or args.arm64ec:
+                if cpu_arch == '32bit' or args.arm or args.arm64 or args.arm64ec:
                     raise BuildError(
                         "To cross-compile with Ninja, load the toolset "
                         "environment for the target processor (e.g. Cross "
                         "Tools Command Prompt for VS)")
                 cmake_extra_args = ['-G', args.cmake_generator]
-            elif args.x86:
-                cmake_extra_args = [
-                    '-A', 'Win32', '-T', 'host=x64', '-G', args.cmake_generator
-                ]
             elif args.arm or args.arm64 or args.arm64ec:
                 # Cross-compiling for ARM(64) architecture
                 # First build protoc for host to use during cross-compilation
@@ -2017,20 +2010,12 @@ def main():
                         "Cannot test on host build machine for cross-compiled "
                         "ARM(64) builds. Will skip test running after build.")
                     args.test = False
+            elif cpu_arch == '32bit':
+                cmake_extra_args = [
+                    '-A', 'Win32', '-T', 'host=x64', '-G', args.cmake_generator
+                ]
             else:
-                if (args.msvc_toolset == '14.16' and
-                        args.cmake_generator == 'Visual Studio 16 2019'):
-                    # CUDA 10.0 requires _MSC_VER >= 1700 and
-                    # _MSC_VER < 1920, aka Visual Studio version
-                    # in [2012, 2019). In VS2019, we have to use
-                    # Side-by-side minor version MSVC toolsets from
-                    # Visual Studio 2017 14.16 is MSVC version
-                    # 141 is MSVC Toolset Version
-                    # Cuda VS extension should be installed to
-                    # C:\Program Files (x86)\Microsoft Visual
-                    # Studio\2019\Enterprise\MSBuild\Microsoft\VC\v160\BuildCustomizations  # noqa
-                    toolset = 'v141,host=x64,version=' + args.msvc_toolset
-                elif args.msvc_toolset:
+                if args.msvc_toolset:
                     toolset = 'host=x64,version=' + args.msvc_toolset
                 else:
                     toolset = 'host=x64'
