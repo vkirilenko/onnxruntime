@@ -5,17 +5,16 @@ parameters:
   default: x64
   
 steps:
-- task: CredScan@2
+- task: CredScan@3
   displayName: 'Run CredScan'
   inputs:
-    toolMajorVersion: V2
     debugMode: false
   continueOnError: true
 
-- task: BinSkim@3
+- task: BinSkim@4
   displayName: 'Run BinSkim'
   inputs:
-    arguments: 'analyze $(Build.BinariesDirectory)\RelWithDebInfo\RelWithDebInfo\*.dll  --recurse --verbose'
+    AnalyzeTargetGlob: '$(Build.BinariesDirectory)\RelWithDebInfo\RelWithDebInfo\**\*.dll'
   continueOnError: true
 
 - task: DeleteFiles@1
@@ -37,22 +36,11 @@ steps:
     msBuildCommandline: '"C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\amd64\msbuild.exe" "$(Build.BinariesDirectory)\RelWithDebInfo\onnxruntime.sln" /p:platform="${{parameters.msbuildPlatform}}" /p:configuration="RelWithDebInfo" /p:CAExcludePath="$(Build.BinariesDirectory);$(Build.SourcesDirectory)\cmake;C:\program files (x86)" /p:VisualStudioVersion="16.0" /m /p:PreferredToolArchitecture=x64'
   continueOnError: true
 
-- task: securedevelopmentteam.vss-secure-development-tools.build-task-report.SdtReport@1
-  displayName: 'Create Security Analysis Report'
-  inputs:
-    BinSkim: true
-    BinSkimBreakOn: WarningAbove
-    CredScan: true
-    SDLNativeRules: true
 
-- task: securedevelopmentteam.vss-secure-development-tools.build-task-publishsecurityanalysislogs.PublishSecurityAnalysisLogs@2
-  displayName: 'Publish Security Analysis Logs'
-  continueOnError: true
-
-- task: securedevelopmentteam.vss-secure-development-tools.build-task-uploadtotsa.TSAUpload@1
-  condition: and (succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
-  displayName: 'TSA Upload'
+- task: TSAUpload@2
+  displayName: 'TSA upload'
+  #condition: and (succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
   inputs:
-    tsaVersion: TsaV2
-    codeBaseName: 'onnxruntime_master'
+    GdnPublishTsaOnboard: false
+    GdnPublishTsaConfigFile: '$(Build.sourcesDirectory)\.gdn\.gdntsa'
   continueOnError: true
