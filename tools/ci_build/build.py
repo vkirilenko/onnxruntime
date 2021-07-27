@@ -649,7 +649,17 @@ def use_dev_mode(args):
         return 'OFF'
     if args.ios and is_macOS():
         return 'OFF'
+    SYSTEM_COLLECTIONURI = os.getenv('SYSTEM_COLLECTIONURI')
+    if SYSTEM_COLLECTIONURI and not SYSTEM_COLLECTIONURI == 'https://dev.azure.com/onnxruntime/':
+        return 'OFF'
     return 'ON'
+
+
+def add_cmake_define_without_override(cmake_extra_defines, key, value):
+    for x in cmake_extra_defines:
+        if x.startswith(key + "="):
+            return cmake_extra_defines
+    cmake_extra_defines.append(key + "=" + value)
 
 
 def generate_build_tree(cmake_path, source_dir, build_dir, cuda_home, cudnn_home, rocm_home,
@@ -662,7 +672,6 @@ def generate_build_tree(cmake_path, source_dir, build_dir, cuda_home, cudnn_home
         "-Donnxruntime_RUN_ONNX_TESTS=" + ("ON" if args.enable_onnx_tests else "OFF"),
         "-Donnxruntime_BUILD_WINML_TESTS=" + ("OFF" if args.skip_winml_tests else "ON"),
         "-Donnxruntime_GENERATE_TEST_REPORTS=ON",
-        "-Donnxruntime_DEV_MODE=" + use_dev_mode(args),
         # There are two ways of locating python C API header file. "find_package(PythonLibs 3.5 REQUIRED)"
         # and "find_package(Python 3.5 COMPONENTS Development.Module)". The first one is deprecated and it
         # depends on the "PYTHON_EXECUTABLE" variable. The second needs "Python_EXECUTABLE". Here we set both
@@ -759,20 +768,29 @@ def generate_build_tree(cmake_path, source_dir, build_dir, cuda_home, cudnn_home
         # enable custom operators in onnxruntime-extensions
         "-Donnxruntime_ENABLE_EXTENSION_CUSTOM_OPS=" + ("ON" if args.enable_onnxruntime_extensions else "OFF"),
     ]
+    # It should be default ON in CI build pipelines, and OFF in packaging pipelines.
+    # And OFF for the people who are not actively developing onnx runtime.
+    add_cmake_define_without_override(cmake_extra_defines, "onnxruntime_DEV_MODE", use_dev_mode(args))
     if args.use_cuda:
-        cmake_args += ["-Donnxruntime_USE_CUDA=ON", "-Donnxruntime_CUDA_VERSION=" + args.cuda_version,
-                       "-Donnxruntime_CUDA_HOME="+cudnn_home,
-                       "-Donnxruntime_CUDNN_HOME="+cudnn_home]
-    if args.enable_msvc_static_runtime:
-        cmake_args += ["-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>",
-                       "-DONNX_USE_MSVC_STATIC_RUNTIME=ON",
-                       "-Dprotobuf_MSVC_STATIC_RUNTIME=ON",
-                       "-Dgtest_force_shared_crt=OFF"]
-    else:
-        cmake_args += ["-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>DLL",
-                       "-DONNX_USE_MSVC_STATIC_RUNTIME=OFF",
-                       "-Dprotobuf_MSVC_STATIC_RUNTIME=OFF",
-                       "-Dgtest_force_shared_crt=ON"]
+        add_cmake_define_without_override(cmake_extra_defines, "onnxruntime_USE_CUDA", "ON")
+        add_cmake_define_without_override(cmake_extra_defines, "onnxruntime_CUDA_VERSION", args.cuda_version)
+        # TODO: this variable is not really needed
+        add_cmake_define_without_override(cmake_extra_defines, "onnxruntime_CUDA_HOME", args.cuda_home)
+        add_cmake_define_without_override(cmake_extra_defines, "onnxruntime_CUDNN_HOME", args.cudnn_home)
+
+    if is_windows():
+        if args.enable_msvc_static_runtime:
+            add_cmake_define_without_override(cmake_extra_defines, "CMAKE_MSVC_RUNTIME_LIBRARY",
+                                              "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+            add_cmake_define_without_override(cmake_extra_defines, "ONNX_USE_MSVC_STATIC_RUNTIME", "ON")
+            add_cmake_define_without_override(cmake_extra_defines, "protobuf_MSVC_STATIC_RUNTIME", "ON")
+            add_cmake_define_without_override(cmake_extra_defines, "gtest_force_shared_crt", "OFF")
+        else:
+            add_cmake_define_without_override(cmake_extra_defines, "CMAKE_MSVC_RUNTIME_LIBRARY",
+                                              "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+            add_cmake_define_without_override(cmake_extra_defines, "ONNX_USE_MSVC_STATIC_RUNTIME", "OFF")
+            add_cmake_define_without_override(cmake_extra_defines, "protobuf_MSVC_STATIC_RUNTIME", "OFF")
+            add_cmake_define_without_override(cmake_extra_defines, "gtest_force_shared_crt", "ON")
 
     if acl_home and os.path.exists(acl_home):
         cmake_args += ["-Donnxruntime_ACL_HOME=" + acl_home]
@@ -982,9 +1000,9 @@ def generate_build_tree(cmake_path, source_dir, build_dir, cuda_home, cudnn_home
             "-Donnxruntime_USE_FULL_PROTOBUF=ON"]
 
     if args.gen_doc:
-        cmake_args += ["-Donnxruntime_PYBIND_EXPORT_OPSCHEMA=ON"]
+        add_cmake_define_without_override(cmake_extra_defines, "onnxruntime_PYBIND_EXPORT_OPSCHEMA", "ON")
     else:
-        cmake_args += ["-Donnxruntime_PYBIND_EXPORT_OPSCHEMA=OFF"]
+        add_cmake_define_without_override(cmake_extra_defines, "onnxruntime_PYBIND_EXPORT_OPSCHEMA", "OFF")
 
     cmake_args += ["-D{}".format(define) for define in cmake_extra_defines]
 
@@ -2025,11 +2043,11 @@ def main():
                     '-A', 'x64', '-T', toolset, '-G', args.cmake_generator
                 ]
             if args.enable_windows_store:
-                cmake_extra_args.append(
-                    '-DCMAKE_TOOLCHAIN_FILE=' + os.path.join(
+                cmake_extra_defines.append(
+                    'CMAKE_TOOLCHAIN_FILE=' + os.path.join(
                         source_dir, 'cmake', 'store_toolchain.cmake'))
             if args.enable_wcos:
-                cmake_extra_args.append('-DCMAKE_USER_MAKE_RULES_OVERRIDE=wcos_rules_override.cmake')
+                cmake_extra_defines.append('CMAKE_USER_MAKE_RULES_OVERRIDE=wcos_rules_override.cmake')
         elif args.cmake_generator is not None and not (is_macOS() and args.use_xcode):
             cmake_extra_args += ['-G', args.cmake_generator]
         elif is_macOS():

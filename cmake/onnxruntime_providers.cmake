@@ -175,7 +175,7 @@ onnxruntime_add_static_library(onnxruntime_providers ${onnxruntime_providers_src
 
 if (MSVC)
    target_compile_options(onnxruntime_providers PRIVATE "/bigobj")
-   if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+   if(onnxruntime_DEV_MODE AND NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
       target_compile_options(onnxruntime_providers PRIVATE "/wd4244")
    endif()
 endif()
@@ -336,15 +336,17 @@ if (onnxruntime_USE_CUDA)
   foreach(ORT_FLAG ${ORT_WARNING_FLAGS})
       target_compile_options(onnxruntime_providers_cuda PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:SHELL:-Xcompiler \"${ORT_FLAG}\">")
   endforeach()
-  if (UNIX)
-    target_compile_options(onnxruntime_providers_cuda PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:SHELL:-Xcompiler -Wno-reorder>"
-            "$<$<NOT:$<COMPILE_LANGUAGE:CUDA>>:-Wno-reorder>")
-    target_compile_options(onnxruntime_providers_cuda PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:SHELL:-Xcompiler -Wno-error=sign-compare>"
-            "$<$<NOT:$<COMPILE_LANGUAGE:CUDA>>:-Wno-error=sign-compare>")
-  else()
-    #mutex.cuh(91): warning C4834: discarding return value of function with 'nodiscard' attribute
-    target_compile_options(onnxruntime_providers_cuda PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:SHELL:-Xcompiler /wd4834>")
-    target_compile_options(onnxruntime_providers_cuda PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:SHELL:-Xcompiler /wd4127>")
+  if (onnxruntime_DEV_MODE)
+	  if (UNIX)
+		target_compile_options(onnxruntime_providers_cuda PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:SHELL:-Xcompiler -Wno-reorder>"
+				"$<$<NOT:$<COMPILE_LANGUAGE:CUDA>>:-Wno-reorder>")
+		target_compile_options(onnxruntime_providers_cuda PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:SHELL:-Xcompiler -Wno-error=sign-compare>"
+				"$<$<NOT:$<COMPILE_LANGUAGE:CUDA>>:-Wno-error=sign-compare>")
+	  else()
+		#mutex.cuh(91): warning C4834: discarding return value of function with 'nodiscard' attribute
+		target_compile_options(onnxruntime_providers_cuda PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:SHELL:-Xcompiler /wd4834>")
+		target_compile_options(onnxruntime_providers_cuda PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:SHELL:-Xcompiler /wd4127>")
+	  endif()
   endif()
   onnxruntime_add_include_to_target(onnxruntime_providers_cuda onnxruntime_common onnxruntime_framework onnx onnx_proto ${PROTOBUF_LIB} flatbuffers)
   if (onnxruntime_ENABLE_TRAINING OR onnxruntime_ENABLE_TRAINING_OPS)
