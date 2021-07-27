@@ -520,7 +520,7 @@ common::Status InferenceSession::FilterEnabledOptimizers(const std::unordered_se
   return Status::OK();
 }
 
-common::Status InferenceSession::SaveToOrtFormat(const std::basic_string<ORTCHAR_T>& filepath) const {
+common::Status InferenceSession::SaveToOrtFormat(const std::filesystem::path& filepath) const {
   ORT_RETURN_IF_NOT(FLATBUFFERS_LITTLEENDIAN, "ort format only supports little-edian machines");
 
   // Get the byte size of the ModelProto and round it to the next MB and use it as flatbuffers' init_size
@@ -960,7 +960,7 @@ Status InferenceSession::PartitionOrtFormatModel(onnxruntime::Graph& graph,
 static Status LoadOrtModelBytes(const std::filesystem::path& model_uri,
                                 gsl::span<const uint8_t>& bytes,
                                 std::vector<uint8_t>& bytes_data_holder) {
-  size_t num_bytes = std::filesystem::file_size(model_uri);
+  size_t num_bytes = gsl::narrow<size_t>(std::filesystem::file_size(model_uri));
 
   bytes_data_holder.resize(num_bytes);
 

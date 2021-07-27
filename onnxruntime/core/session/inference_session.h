@@ -508,7 +508,7 @@ class InferenceSession {
     return !custom_schema_registries_.empty();
   }
 
-  common::Status SaveToOrtFormat(const std::basic_string<ORTCHAR_T>& filepath) const;
+  common::Status SaveToOrtFormat(const std::filesystem::path& filepath) const;
 #endif
 
 #if defined(ENABLE_ORT_FORMAT_LOAD)

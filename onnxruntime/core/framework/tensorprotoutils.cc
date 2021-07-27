@@ -559,7 +559,7 @@ static Status GetFileContent(
     void*& raw_buffer, OrtCallback& deleter) {
   // query length if it is 0
   if (length == 0) {
-    length = std::filesystem::file_size(file_path);    
+    length = gsl::narrow<size_t>(std::filesystem::file_size(file_path));
   }
 
   // first, try to map into memory
