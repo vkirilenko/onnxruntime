@@ -1223,7 +1223,7 @@ if (onnxruntime_USE_DNNL)
 endif()
 
 if(UNIX)
-  if (NOT APPLE AND NOT onnxruntime_ENABLE_WEBASSEMBLY_THREADS)
+  if (NOT APPLE AND NOT onnxruntime_BUILD_WEBASSEMBLY)
     set(FS_STDLIB stdc++fs)
   endif()
 endif()
