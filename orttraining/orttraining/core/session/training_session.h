@@ -367,7 +367,7 @@ class TrainingSession : public InferenceSession {
   const DataTransferManager& GetDataTransferManager() const;
 
   /** Gets the model location. */
-  const PathString& GetModelLocation() const { return model_location_; }
+  const std::filesystem::path& GetModelLocation() const { return model_location_; }
 
   /**
    * Checks to be see if given graph output is produced by an fp32-only node.
