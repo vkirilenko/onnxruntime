@@ -1222,6 +1222,12 @@ if (onnxruntime_USE_DNNL)
   include(dnnl)
 endif()
 
+if(UNIX)
+  if (NOT APPLE AND NOT onnxruntime_ENABLE_WEBASSEMBLY_THREADS)
+    set(FS_STDLIB stdc++fs)
+  endif()
+endif()
+  
 # TVM
 if (onnxruntime_USE_TVM)
   if (onnxruntime_USE_CUDA)
@@ -1250,12 +1256,7 @@ if (onnxruntime_USE_TVM)
   add_definitions(-DUSE_TVM)
 
   set(onnxruntime_tvm_libs onnxruntime_codegen_tvm)
-  # needs to link with stdc++fs in Linux
-  if(UNIX)
-    if (NOT APPLE)
-      set(FS_STDLIB stdc++fs)
-    endif()
-  endif()
+
   list(APPEND onnxruntime_EXTERNAL_LIBRARIES tvm nnvm_compiler ${FS_STDLIB})
   list(APPEND onnxruntime_EXTERNAL_DEPENDENCIES tvm nnvm_compiler)
 endif()
@@ -1674,7 +1675,7 @@ if(WIN32)
   list(APPEND onnxruntime_EXTERNAL_LIBRARIES debug Dbghelp)
 else()
   list(APPEND onnxruntime_EXTERNAL_LIBRARIES nsync_cpp)
-  list(APPEND onnxruntime_EXTERNAL_LIBRARIES stdc++fs ${CMAKE_DL_LIBS} Threads::Threads)
+  list(APPEND onnxruntime_EXTERNAL_LIBRARIES ${FS_STDLIB} ${CMAKE_DL_LIBS} Threads::Threads)
 endif()
 
 if (WIN32)
