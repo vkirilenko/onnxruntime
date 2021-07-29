@@ -713,6 +713,7 @@ else()
   # use protobuf as a submodule
   if (CMAKE_SYSTEM_NAME STREQUAL "Android")
     set(protobuf_BUILD_PROTOC_BINARIES OFF CACHE BOOL "Build protobuf tests" FORCE)
+	set(protobuf_WITH_ZLIB OFF CACHE BOOL "Build with zlib support" FORCE)
   endif()
   if(onnxruntime_DISABLE_RTTI)
     set(protobuf_DISABLE_RTTI OFF CACHE BOOL "Remove runtime type information in the binaries" FORCE)
