@@ -1472,7 +1472,7 @@ def run_onnxruntime_tests(args, source_dir, ctest_path, build_dir, configs):
                          '-ConfigFile', os.path.join(source_dir, 'NuGet.config'),
                          '-PackagesDirectory', cwd])
                 cwd2 = os.path.join(cwd, config)
-                executables = ['onnxruntime_test_all.exe']
+                executables = ['onnxruntime_test_all.exe', 'onnxruntime_mlas_test.exe']
                 if args.build_shared_lib:
                     executables.append('onnxruntime_shared_lib_test.exe')
                     executables.append('onnxruntime_global_thread_pools_test.exe')
@@ -1485,7 +1485,7 @@ def run_onnxruntime_tests(args, source_dir, ctest_path, build_dir, configs):
                          source_dir, 'cmake\\codeconv.runsettings')] + executables,
                     cwd=cwd2, dll_path=dll_path)
             else:
-                executables = ['onnxruntime_test_all']
+                executables = ['onnxruntime_test_all', 'onnxruntime_mlas_test']
                 if args.build_shared_lib:
                     executables.append('onnxruntime_shared_lib_test')
                     executables.append('onnxruntime_global_thread_pools_test')

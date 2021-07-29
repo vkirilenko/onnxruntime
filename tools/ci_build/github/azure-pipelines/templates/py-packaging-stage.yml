@@ -215,6 +215,7 @@ stages:
           Repository: onnxruntimecuda11build
 
       - task: CmdLine@2
+        displayName: 'Build Python Wheel'
         inputs:
           script: |
             mkdir -p $HOME/.onnx
@@ -229,7 +230,7 @@ stages:
               onnxruntimecuda11build \
                 $(PythonManylinuxDir)/bin/python3 /onnxruntime_src/tools/ci_build/build.py \
                   --build_dir /build --cmake_generator Ninja \
-                  --config Release \
+                  --config Release --update --build \
                   --skip_submodule_sync \
                   --parallel \
                   --build_wheel \
@@ -237,6 +238,35 @@ stages:
                   ${{ parameters.build_py_parameters }} \
                   --cmake_extra_defines CMAKE_CUDA_HOST_COMPILER=/opt/rh/devtoolset-9/root/usr/bin/cc 'CMAKE_CUDA_ARCHITECTURES=37;50;52;60;61;70;75;80'
           workingDirectory: $(Build.SourcesDirectory)
+
+      - task: CmdLine@2
+        displayName: 'Running tests'
+        condition: and(succeeded(), eq(variables['PythonVersion'], '3.8'))
+        inputs:
+          script: |
+            set -e -x
+            rm -rf $(Build.BinariesDirectory)/Release/onnxruntime $(Build.BinariesDirectory)/Release/pybind11
+            sudo rm -f /build /onnxruntime_src
+            sudo ln -s $(Build.SourcesDirectory) /onnxruntime_src
+            python3 -m pip uninstall -y ort-nightly-gpu ort-nightly onnxruntime onnxruntime-gpu -qq
+            cp $(Build.SourcesDirectory)/tools/ci_build/github/linux/docker/scripts/manylinux/requirements.txt $(Build.BinariesDirectory)/requirements.txt
+            # Test ORT with the latest ONNX release.
+            sed -i 's/git+http:\/\/github\.com\/onnx\/onnx.*/onnx==1.9.0/' $(Build.BinariesDirectory)/requirements.txt
+            python3 -m pip install -r $(Build.BinariesDirectory)/requirements.txt
+            python3 -m pip install $(Build.BinariesDirectory)/Release/dist/*.whl
+            cd $(Build.BinariesDirectory)/Release
+            ls $(Build.BinariesDirectory)/models
+            rmdir $(Build.BinariesDirectory)/models
+            ln -sf /data/models $(Build.BinariesDirectory)
+            python3 /onnxruntime_src/tools/ci_build/build.py \
+                  --build_dir $(Build.BinariesDirectory) --cmake_generator Ninja \
+                  --config Release --test \
+                  --skip_submodule_sync \
+                  --parallel \
+                  --build_wheel \
+                  --enable_onnx_tests --use_cuda --cuda_version=11.1 --cuda_home=/usr/local/cuda-11.1 --cudnn_home=/usr/local/cuda-11.1 \
+                  ${{ parameters.build_py_parameters }} --ctest_path '' \
+                  --cmake_extra_defines CMAKE_CUDA_HOST_COMPILER=/opt/rh/devtoolset-9/root/usr/bin/cc 'CMAKE_CUDA_ARCHITECTURES=37;50;52;60;61;70;75;80'
 
       - task: CopyFiles@2
         displayName: 'Copy Python Wheel to: $(Build.ArtifactStagingDirectory)'
