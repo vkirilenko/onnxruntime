@@ -1989,7 +1989,8 @@ def main():
     # if using rocm, setup rocm paths
     rocm_home = setup_rocm_build(args, configs)
 
-    os.makedirs(build_dir, exist_ok=True)
+    if args.update or args.build:
+        os.makedirs(build_dir, exist_ok=True)
 
     log.info("Build started")
     if args.update:
@@ -2150,6 +2151,10 @@ def main():
             nodejs_binding_dir = os.path.normpath(os.path.join(source_dir, "js", "node"))
             run_nodejs_tests(nodejs_binding_dir)
 
+    # Build packages after running the tests.
+    # NOTE: if you have a test that rely on a file which only get copied/generated during packaging step, it could
+    # fail unexpectedly. Similar, if your packaging step forgot to copy a file into the package, we don't know it
+    # either.
     if args.build:
         if args.build_wheel:
             nightly_build = bool(os.getenv('NIGHTLY_BUILD') == '1')
