@@ -15,7 +15,7 @@ python3 /onnxruntime_src/tools/ci_build/build.py \
     --build_dir /build --cmake_generator Ninja \
     --config MinSizeRel \
     --skip_submodule_sync \
-    --parallel \
+    --parallel --enable_lto \
     --android \
     --android_sdk_path /android_home \
     --android_ndk_path /ndk_home \
